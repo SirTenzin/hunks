@@ -185,6 +185,9 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
   const fileRows = createMemo(() => flattenFileTree(fileTree(), expandedFileNodes()))
   const patchFileIndexes = createMemo(() => orderedPatchFileIndexes(flattenFileTree(fileTree())))
 
+  // Help dialog visibility (opened by `?`).
+  const [helpOpen, setHelpOpen] = createSignal(false)
+
   // Command palette + theme picker state.
   // paletteMode: null = closed, "commands" = Ctrl+P palette, "themes" = theme switcher
   type PaletteMode = null | "commands" | "themes"
@@ -456,6 +459,12 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
   useKeyboard((event) => {
     const key = event.name
 
+    // Help dialog takes priority when open; close on esc or enter.
+    if (helpOpen()) {
+      if (key === "escape" || key === "return") setHelpOpen(false)
+      return
+    }
+
     // Command palette + theme picker take priority when open.
     if (paletteMode() !== null) {
       if (key === "escape") {
@@ -487,7 +496,7 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
       return
     }
     if (key === "?") {
-      // Help dialog deferred for v1
+      setHelpOpen(true)
       return
     }
     if (key === "tab" || key === "t") {
@@ -563,12 +572,14 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
       }
       return
     }
+    // Page up/down scroll speed mirrors opencode's main session view: half viewport per page key,
+    // and a separate quarter-viewport half-page jump on ctrl+d / ctrl+u.
     if (key === "pagedown" || (key === "f" && event.ctrl)) {
       if (focus() === "files") {
         moveFileSelection(8)
       } else {
         clearFileTreePatchState()
-        if (scroll) scroll.scrollBy(scroll.height)
+        if (scroll) scroll.scrollBy(scroll.height / 2)
       }
       return
     }
@@ -577,7 +588,25 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
         moveFileSelection(-8)
       } else {
         clearFileTreePatchState()
-        if (scroll) scroll.scrollBy(-scroll.height)
+        if (scroll) scroll.scrollBy(-scroll.height / 2)
+      }
+      return
+    }
+    if (key === "d" && event.ctrl) {
+      if (focus() === "files") {
+        moveFileSelection(4)
+      } else {
+        clearFileTreePatchState()
+        if (scroll) scroll.scrollBy(scroll.height / 4)
+      }
+      return
+    }
+    if (key === "u" && event.ctrl) {
+      if (focus() === "files") {
+        moveFileSelection(-4)
+      } else {
+        clearFileTreePatchState()
+        if (scroll) scroll.scrollBy(-scroll.height / 4)
       }
       return
     }
@@ -820,6 +849,79 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
           )
         })()}
       </Show>
+
+      <Show when={helpOpen()}>
+        {(() => {
+          const HELP_WIDTH = Math.min(80, Math.max(50, dimensions().width - 8))
+          const rows = HELP_ROWS
+          const HELP_HEIGHT = Math.min(dimensions().height - 4, rows.length + 6)
+          return (
+            <box
+              position="absolute"
+              zIndex={3000}
+              left={Math.max(0, Math.floor((dimensions().width - HELP_WIDTH) / 2))}
+              top={Math.max(0, Math.floor((dimensions().height - HELP_HEIGHT) / 2))}
+              width={HELP_WIDTH}
+              height={HELP_HEIGHT}
+              backgroundColor={theme().backgroundElement}
+              border={["top", "right", "bottom", "left"]}
+              borderColor={theme().border}
+              padding={1}
+              gap={1}
+            >
+              <box flexDirection="row" justifyContent="space-between">
+                <text attributes={TextAttributes.BOLD} fg={theme().text}>
+                  Diff shortcuts
+                </text>
+                <text fg={theme().textMuted}>esc</text>
+              </box>
+              <box flexDirection="row">
+                <text fg={theme().textMuted} width={10} wrapMode="none">
+                  Key
+                </text>
+                <text fg={theme().textMuted} width={22} wrapMode="none">
+                  Action
+                </text>
+                <text fg={theme().textMuted}>Description</text>
+              </box>
+              <For each={rows}>
+                {(row) => (
+                  <box flexDirection="row">
+                    <text fg={theme().text} width={10} wrapMode="none">
+                      {row.shortcut}
+                    </text>
+                    <text fg={theme().text} width={22} wrapMode="none">
+                      {row.action}
+                    </text>
+                    <text fg={theme().textMuted}>{row.description}</text>
+                  </box>
+                )}
+              </For>
+            </box>
+          )
+        })()}
+      </Show>
     </box>
   )
 }
+
+// Help dialog rows. Mirrors opencode's DiffViewerHelpDialog table — same columns,
+// same descriptions — minus diff.switch_source (we don't have last-turn mode),
+// plus our additions: r (reload), ctrl+p (commands), v (toggle view).
+const HELP_ROWS = [
+  { shortcut: "q", action: "Close viewer", description: "Quit the diff viewer" },
+  {
+    shortcut: "tab / t",
+    action: "Focus file tree",
+    description: "Move keyboard focus between the file tree and patch pane",
+  },
+  { shortcut: "n", action: "Next file", description: "Select the next changed file in file-tree order" },
+  { shortcut: "p", action: "Previous file", description: "Select the previous changed file in file-tree order" },
+  { shortcut: "t", action: "Toggle file tree", description: "Show or hide the file tree sidebar" },
+  { shortcut: "s", action: "Toggle patches", description: "Switch between one selected patch and all patches" },
+  { shortcut: "v", action: "Toggle view", description: "Switch between split and unified diff layout" },
+  { shortcut: "e", action: "Expand all folders", description: "Open every folder in the file tree" },
+  { shortcut: "m", action: "Mark reviewed", description: "Toggle reviewed state for the selected file" },
+  { shortcut: "r", action: "Reload diff", description: "Re-run git diff to pick up changes" },
+  { shortcut: "ctrl+p", action: "Commands", description: "Open the command palette" },
+] as const
