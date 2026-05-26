@@ -1,5 +1,5 @@
 {
-  "name": "hunks",
+  "name": "@sirtenzin/hunks",
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
