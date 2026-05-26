@@ -24,7 +24,7 @@
     "prepublishOnly": "bun run build",
     "prepack": "bun run build"
   },
-  "version": "0.1.0",
+  "version": "0.1.1",
   "files": ["bin", "src", "bunfig.toml", "tsconfig.json"],
   "engines": {
     "bun": ">=1.0.0"
