@@ -1,4 +1,4 @@
-# opendiff
+# hunks
 
 Terminal diff viewer extracted from [opencode](https://github.com/anomalyco/opencode)'s `/diff` slash command. Renders git working-tree changes in a keyboard-navigable TUI with file tree sidebar, split/unified diff panes, and reviewed-state tracking.
 
@@ -7,9 +7,9 @@ Terminal diff viewer extracted from [opencode](https://github.com/anomalyco/open
 Requires [Bun](https://bun.sh) (>= 1.0).
 
 ```sh
-bun i -g @sirtenzin/opendiff
+bun i -g hunks
 # or
-npm i -g @sirtenzin/opendiff
+npm i -g hunks
 ```
 
 ## Usage
@@ -17,7 +17,7 @@ npm i -g @sirtenzin/opendiff
 Run inside any git repository with uncommitted changes:
 
 ```sh
-opendiff
+hunks
 ```
 
 No arguments, no config. It walks up from `cwd` to find `.git`, runs `git diff HEAD`, and opens the viewer.

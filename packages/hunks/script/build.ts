@@ -1,7 +1,7 @@
 import { createSolidTransformPlugin } from "@opentui/solid/bun-plugin"
 
 const result = await Bun.build({
-  entrypoints: ["bin/opendiff.ts"],
+  entrypoints: ["bin/hunks.ts"],
   outdir: "dist",
   target: "bun",
   packages: "external",

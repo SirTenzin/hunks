@@ -1,5 +1,5 @@
 {
-  "name": "@sirtenzin/opendiff",
+  "name": "hunks",
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
@@ -10,7 +10,7 @@
     "typescript": "^5"
   },
   "bin": {
-    "opendiff": "bin/opendiff.ts"
+    "hunks": "bin/hunks.ts"
   },
   "dependencies": {
     "@opentui/core": "0.2.15",
@@ -18,17 +18,17 @@
     "solid-js": "^1.9.13"
   },
   "scripts": {
-    "dev": "bun run bin/opendiff.ts",
+    "dev": "bun run bin/hunks.ts",
     "typecheck": "tsc --noEmit",
     "build": "bun run script/build.ts",
     "prepublishOnly": "bun run build",
     "prepack": "bun run build"
   },
-  "version": "0.1.1",
+  "version": "0.1.2",
   "repository": {
     "type": "git",
-    "url": "https://github.com/SirTenzin/opendiff.git",
-    "directory": "packages/opendiff"
+    "url": "https://github.com/SirTenzin/hunks.git",
+    "directory": "packages/hunks"
   },
   "files": ["bin", "src", "bunfig.toml", "tsconfig.json"],
   "engines": {
