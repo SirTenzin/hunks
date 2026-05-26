@@ -1,0 +1,32 @@
+{
+  "name": "@sirtenzin/opendiff",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/babel__core": "^7.20.5",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "bin": {
+    "opendiff": "bin/opendiff.ts"
+  },
+  "dependencies": {
+    "@opentui/core": "0.2.15",
+    "@opentui/solid": "0.2.15",
+    "solid-js": "^1.9.13"
+  },
+  "scripts": {
+    "dev": "bun run bin/opendiff.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "bun run script/build.ts",
+    "prepublishOnly": "bun run build",
+    "prepack": "bun run build"
+  },
+  "version": "0.1.0",
+  "files": ["bin", "src", "bunfig.toml", "tsconfig.json"],
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}
