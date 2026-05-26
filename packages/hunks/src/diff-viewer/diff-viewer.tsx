@@ -3,7 +3,7 @@ import { TextAttributes, type BorderSides, type BoxRenderable, type ScrollBoxRen
 import { useTerminalDimensions, useKeyboard } from "@opentui/solid"
 import path from "path"
 import { createEffect, createMemo, createSignal, For, Match, onCleanup, Show, Switch } from "solid-js"
-import { useTheme } from "../theme"
+import { useTheme, listThemeNames, setActiveTheme, getActiveThemeName } from "../theme"
 import { DiffViewerFileTree } from "./file-tree"
 import { Panel, PanelGroup, Separator } from "./layout"
 import {
@@ -184,6 +184,53 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
   const [reviewedFileNames, setReviewedFileNames] = createSignal<ReadonlySet<string>>(new Set())
   const fileRows = createMemo(() => flattenFileTree(fileTree(), expandedFileNodes()))
   const patchFileIndexes = createMemo(() => orderedPatchFileIndexes(flattenFileTree(fileTree())))
+
+  // Command palette + theme picker state.
+  // paletteMode: null = closed, "commands" = Ctrl+P palette, "themes" = theme switcher
+  type PaletteMode = null | "commands" | "themes"
+  const [paletteMode, setPaletteMode] = createSignal<PaletteMode>(null)
+  const [paletteIndex, setPaletteIndex] = createSignal(0)
+  // Remember which theme was active when the picker opened so Esc restores it.
+  const [themeAtOpen, setThemeAtOpen] = createSignal(getActiveThemeName())
+  const commandList = [{ id: "theme.switch", title: "Switch theme" }]
+  const themeList = listThemeNames()
+
+  function openPalette() {
+    setThemeAtOpen(getActiveThemeName())
+    setPaletteIndex(0)
+    setPaletteMode("commands")
+  }
+  function openThemes() {
+    const current = getActiveThemeName()
+    const idx = themeList.indexOf(current)
+    setPaletteIndex(idx >= 0 ? idx : 0)
+    setPaletteMode("themes")
+  }
+  function closePalette(restore: boolean) {
+    if (restore && paletteMode() === "themes") setActiveTheme(themeAtOpen())
+    setPaletteMode(null)
+  }
+  function confirmPalette() {
+    if (paletteMode() === "commands") {
+      const cmd = commandList[paletteIndex()]
+      if (cmd?.id === "theme.switch") openThemes()
+      return
+    }
+    if (paletteMode() === "themes") {
+      // Selection already applied via onMove; just close without restore.
+      setPaletteMode(null)
+    }
+  }
+  function movePalette(delta: number) {
+    const list = paletteMode() === "commands" ? commandList : themeList
+    if (list.length === 0) return
+    let next = paletteIndex() + delta
+    if (next < 0) next = list.length - 1
+    if (next >= list.length) next = 0
+    setPaletteIndex(next)
+    // Live-preview the highlighted theme in the themes picker, mirroring opencode behavior.
+    if (paletteMode() === "themes") setActiveTheme(themeList[next]!)
+  }
   const focusRunner = (input: Record<DiffViewerFocus, () => void>) => () => input[focus()]()
   let scroll: ScrollBoxRenderable | undefined
   const patchNodeByFileIndex = new Map<number, BoxRenderable>()
@@ -408,6 +455,33 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
 
   useKeyboard((event) => {
     const key = event.name
+
+    // Command palette + theme picker take priority when open.
+    if (paletteMode() !== null) {
+      if (key === "escape") {
+        closePalette(true)
+        return
+      }
+      if (key === "return") {
+        confirmPalette()
+        return
+      }
+      if (key === "j" || key === "down") {
+        movePalette(1)
+        return
+      }
+      if (key === "k" || key === "up") {
+        movePalette(-1)
+        return
+      }
+      // Eat any other key while the palette is open.
+      return
+    }
+
+    if (key === "p" && event.ctrl) {
+      openPalette()
+      return
+    }
     if (key === "q") {
       props.onExit()
       return
@@ -671,10 +745,81 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
             m <span style={{ fg: theme().textMuted }}>mark reviewed</span>
           </text>
           <text fg={theme().text}>
+            ctrl+p <span style={{ fg: theme().textMuted }}>commands</span>
+          </text>
+          <text fg={theme().text}>
             ? <span style={{ fg: theme().textMuted }}>all</span>
           </text>
         </Panel>
       </PanelGroup>
+
+      <Show when={paletteMode() !== null}>
+        {(() => {
+          // Dynamically size the picker: cap at 60% of terminal height.
+          const PICKER_WIDTH = Math.min(50, Math.max(30, dimensions().width - 8))
+          const PICKER_MAX_HEIGHT = Math.max(8, Math.min(24, Math.floor(dimensions().height * 0.6)))
+          const items = paletteMode() === "themes" ? themeList : commandList.map((c) => c.title)
+          // Visible rows = total height - 2 (border) - 2 (title+blank) - 2 (footer hint+blank)
+          const visibleRows = Math.max(3, PICKER_MAX_HEIGHT - 6)
+          // Scroll so the selected index is always visible.
+          const scrollOffset = () => {
+            const idx = paletteIndex()
+            if (idx < visibleRows) return 0
+            return Math.min(items.length - visibleRows, idx - visibleRows + 1)
+          }
+          const windowed = () => {
+            const start = scrollOffset()
+            return items.slice(start, start + visibleRows).map((label, i) => ({
+              label,
+              index: start + i,
+            }))
+          }
+          return (
+            <box
+              position="absolute"
+              zIndex={3000}
+              left={Math.max(0, Math.floor((dimensions().width - PICKER_WIDTH) / 2))}
+              top={Math.max(0, Math.floor((dimensions().height - PICKER_MAX_HEIGHT) / 2))}
+              width={PICKER_WIDTH}
+              height={PICKER_MAX_HEIGHT}
+              backgroundColor={theme().backgroundElement}
+              border={["top", "right", "bottom", "left"]}
+              borderColor={theme().border}
+              padding={1}
+            >
+              <box flexDirection="row" justifyContent="space-between">
+                <text fg={theme().text} attributes={TextAttributes.BOLD}>
+                  {paletteMode() === "themes" ? "Switch theme" : "Commands"}
+                </text>
+                <text fg={theme().textMuted}>esc</text>
+              </box>
+              <box height={1} />
+              <For each={windowed()}>
+                {(row) => {
+                  const active = () => row.index === paletteIndex()
+                  return (
+                    <box
+                      flexDirection="row"
+                      width="100%"
+                      backgroundColor={active() ? theme().primary : undefined}
+                      paddingLeft={1}
+                      paddingRight={1}
+                    >
+                      <text fg={active() ? theme().background : theme().text} wrapMode="none">
+                        {row.label}
+                      </text>
+                    </box>
+                  )
+                }}
+              </For>
+              <box flexGrow={1} />
+              <text fg={theme().textMuted}>
+                {paletteIndex() + 1}/{items.length} · ↑↓ navigate · enter select
+              </text>
+            </box>
+          )
+        })()}
+      </Show>
     </box>
   )
 }
