@@ -1,6 +1,7 @@
 import { createCliRenderer } from "@opentui/core"
 import { render } from "@opentui/solid"
 import { App } from "./app"
+import { loadSystemThemeFromColors } from "./theme"
 
 const renderer = await createCliRenderer({
   externalOutputMode: "passthrough",
@@ -9,6 +10,16 @@ const renderer = await createCliRenderer({
   useMouse: true,
   clearOnShutdown: true,
 })
+
+// Query the terminal's palette so a "system" theme selection picks up the user's
+// actual terminal colors. Mirrors opencode's resolveSystemTheme flow.
+void renderer
+  .getPalette({ size: 16 })
+  .then((colors) => {
+    const mode = renderer.themeMode === "light" ? "light" : "dark"
+    loadSystemThemeFromColors(colors as { palette: string[]; defaultForeground?: string; defaultBackground?: string }, mode)
+  })
+  .catch(() => undefined)
 
 function exit() {
   renderer.destroy()

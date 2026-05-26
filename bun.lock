@@ -10,14 +10,15 @@
       },
     },
     "packages/hunks": {
-      "name": "hunks",
-      "version": "0.1.1",
+      "name": "@sirtenzin/hunks",
+      "version": "0.1.6",
       "bin": {
-        "hunks": "bin/hunks.ts",
+        "hunks": "dist/hunks.js",
       },
       "dependencies": {
         "@opentui/core": "0.2.15",
         "@opentui/solid": "0.2.15",
+        "fuzzysort": "^3.1.0",
         "solid-js": "^1.9.13",
       },
       "devDependencies": {
@@ -112,6 +113,8 @@
 
     "@opentui/solid": ["@opentui/solid@0.2.15", "", { "dependencies": { "@babel/core": "7.28.0", "@babel/preset-typescript": "7.27.1", "@opentui/core": "0.2.15", "babel-plugin-module-resolver": "5.0.2", "babel-preset-solid": "1.9.12", "entities": "7.0.1", "s-js": "^0.4.9" }, "peerDependencies": { "solid-js": "1.9.12" } }, "sha512-CViepAjsCWXwrLndMt+qlLo7cooVX7DXwSJHNizw7mfrRJtOPzSYJZCIk1vF4IJTWffCHygoYMe3uSeKvzAcbw=="],
 
+    "@sirtenzin/hunks": ["@sirtenzin/hunks@workspace:packages/hunks"],
+
     "@turbo/darwin-64": ["@turbo/darwin-64@2.9.14", "", { "os": "darwin", "cpu": "x64" }, "sha512-t7QiPflaEyBE4oayeZtSmu4mEfjgIrcNlNNl1z1dmIVPqEdtA7+CfTf8d7KXsOGPh6aNgWjKxyvQg9uGfDQF+A=="],
 
     "@turbo/darwin-arm64": ["@turbo/darwin-arm64@2.9.14", "", { "os": "darwin", "cpu": "arm64" }, "sha512-d23147mC9BsCPA9mJ0h/ubcpbRgcJBXbcG3+Vq7YLhjz3IXuvQsJ1UXH8f4MD76ZjJ4m/E4aRdJV+MW88CDfbw=="],
@@ -184,6 +187,8 @@
 
     "function-bind": ["function-bind@1.1.2", "", {}, "sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA=="],
 
+    "fuzzysort": ["fuzzysort@3.1.0", "", {}, "sha512-sR9BNCjBg6LNgwvxlBd0sBABvQitkLzoVY9MYYROQVX/FvfJ4Mai9LsGhDgd8qYdds0bY77VzYd5iuB+v5rwQQ=="],
+
     "gensync": ["gensync@1.0.0-beta.2", "", {}, "sha512-3hN7NaskYvMDLQY55gnW3NQ+mesEAepTqlg+VEbj7zzqEMBVNhzcGYYeqFo/TlYz6eQiFcp1HcsCZO+nGgS8zg=="],
 
     "get-east-asian-width": ["get-east-asian-width@1.6.0", "", {}, "sha512-QRbvDIbx6YklUe6RxeTeleMR0yv3cYH6PsPZHcnVn7xv7zO1BHN8r0XETu8n6Ye3Q+ahtSarc3WgtNWmehIBfA=="],
@@ -195,8 +200,6 @@
     "hasown": ["hasown@2.0.3", "", { "dependencies": { "function-bind": "^1.1.2" } }, "sha512-ej4AhfhfL2Q2zpMmLo7U1Uv9+PyhIZpgQLGT1F9miIGmiCJIoCgSmczFdrc97mWT4kVY72KA+WnnhJ5pghSvSg=="],
 
     "html-entities": ["html-entities@2.3.3", "", {}, "sha512-DV5Ln36z34NNTDgnz0EWGBLZENelNAtkiFA4kyNOG2tDI6Mz1uSWiq1wAKdyjnJwyDiDO7Fa2SO1CTxPXL8VxA=="],
-
-    "hunks": ["hunks@workspace:packages/hunks"],
 
     "is-core-module": ["is-core-module@2.16.2", "", { "dependencies": { "hasown": "^2.0.3" } }, "sha512-evOr8xfXKxE6qSR0hSXL2r3sd7ALj8+7jQEUvPYcm5sgZFdJ+AYzT6yNmJenvIYQBgIGwfwz08sL8zoL7yq2BA=="],
 

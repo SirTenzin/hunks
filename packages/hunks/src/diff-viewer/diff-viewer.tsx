@@ -1,11 +1,13 @@
 /** @jsxImportSource @opentui/solid */
-import { TextAttributes, type BorderSides, type BoxRenderable, type ScrollBoxRenderable, type RGBA } from "@opentui/core"
+import { RGBA, TextAttributes, type BorderSides, type BoxRenderable, type ScrollBoxRenderable } from "@opentui/core"
 import { useTerminalDimensions, useKeyboard } from "@opentui/solid"
 import path from "path"
 import { createEffect, createMemo, createSignal, For, Match, onCleanup, Show, Switch } from "solid-js"
 import { useTheme, listThemeNames, setActiveTheme, getActiveThemeName } from "../theme"
 import { DiffViewerFileTree } from "./file-tree"
 import { Panel, PanelGroup, Separator } from "./layout"
+import { Picker } from "./picker"
+import { CustomSpeedScroll } from "./scroll-accel"
 import {
   allExpandedFileTreeDirectories,
   buildFileTree,
@@ -188,51 +190,30 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
   // Help dialog visibility (opened by `?`).
   const [helpOpen, setHelpOpen] = createSignal(false)
 
+  // Mouse wheel / trackpad scroll speed for the patches scrollbox.
+  // Matches opencode's main session view: CustomSpeedScroll(3) → 3 lines per tick.
+  const patchScrollAccel = new CustomSpeedScroll(3)
+
   // Command palette + theme picker state.
-  // paletteMode: null = closed, "commands" = Ctrl+P palette, "themes" = theme switcher
+  // paletteMode: null = closed, "commands" = Ctrl+P palette, "themes" = theme switcher.
+  // The actual selection/filter UI lives inside <Picker> so this component just
+  // tracks which one is open and what the user's theme was when they opened it
+  // (so cancel can restore it).
   type PaletteMode = null | "commands" | "themes"
   const [paletteMode, setPaletteMode] = createSignal<PaletteMode>(null)
-  const [paletteIndex, setPaletteIndex] = createSignal(0)
-  // Remember which theme was active when the picker opened so Esc restores it.
   const [themeAtOpen, setThemeAtOpen] = createSignal(getActiveThemeName())
   const commandList = [{ id: "theme.switch", title: "Switch theme" }]
-  const themeList = listThemeNames()
 
   function openPalette() {
     setThemeAtOpen(getActiveThemeName())
-    setPaletteIndex(0)
     setPaletteMode("commands")
   }
   function openThemes() {
-    const current = getActiveThemeName()
-    const idx = themeList.indexOf(current)
-    setPaletteIndex(idx >= 0 ? idx : 0)
     setPaletteMode("themes")
   }
   function closePalette(restore: boolean) {
     if (restore && paletteMode() === "themes") setActiveTheme(themeAtOpen())
     setPaletteMode(null)
-  }
-  function confirmPalette() {
-    if (paletteMode() === "commands") {
-      const cmd = commandList[paletteIndex()]
-      if (cmd?.id === "theme.switch") openThemes()
-      return
-    }
-    if (paletteMode() === "themes") {
-      // Selection already applied via onMove; just close without restore.
-      setPaletteMode(null)
-    }
-  }
-  function movePalette(delta: number) {
-    const list = paletteMode() === "commands" ? commandList : themeList
-    if (list.length === 0) return
-    let next = paletteIndex() + delta
-    if (next < 0) next = list.length - 1
-    if (next >= list.length) next = 0
-    setPaletteIndex(next)
-    // Live-preview the highlighted theme in the themes picker, mirroring opencode behavior.
-    if (paletteMode() === "themes") setActiveTheme(themeList[next]!)
   }
   const focusRunner = (input: Record<DiffViewerFocus, () => void>) => () => input[focus()]()
   let scroll: ScrollBoxRenderable | undefined
@@ -465,27 +446,9 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
       return
     }
 
-    // Command palette + theme picker take priority when open.
-    if (paletteMode() !== null) {
-      if (key === "escape") {
-        closePalette(true)
-        return
-      }
-      if (key === "return") {
-        confirmPalette()
-        return
-      }
-      if (key === "j" || key === "down") {
-        movePalette(1)
-        return
-      }
-      if (key === "k" || key === "up") {
-        movePalette(-1)
-        return
-      }
-      // Eat any other key while the palette is open.
-      return
-    }
+    // Picker handles its own keyboard via useKeyboard inside the component; just
+    // bail so we don't double-handle (e.g. our `q` exits while the picker is open).
+    if (paletteMode() !== null) return
 
     if (key === "p" && event.ctrl) {
       openPalette()
@@ -690,6 +653,7 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
                   minHeight={0}
                   verticalScrollbarOptions={{ visible: false }}
                   horizontalScrollbarOptions={{ visible: false }}
+                  scrollAcceleration={patchScrollAccel}
                 >
                   <For each={visiblePatchFiles()}>
                     {(entry, index) => {
@@ -782,124 +746,85 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
         </Panel>
       </PanelGroup>
 
-      <Show when={paletteMode() !== null}>
-        {(() => {
-          // Dynamically size the picker: cap at 60% of terminal height.
-          const PICKER_WIDTH = Math.min(50, Math.max(30, dimensions().width - 8))
-          const PICKER_MAX_HEIGHT = Math.max(8, Math.min(24, Math.floor(dimensions().height * 0.6)))
-          const items = paletteMode() === "themes" ? themeList : commandList.map((c) => c.title)
-          // Visible rows = total height - 2 (border) - 2 (title+blank) - 2 (footer hint+blank)
-          const visibleRows = Math.max(3, PICKER_MAX_HEIGHT - 6)
-          // Scroll so the selected index is always visible.
-          const scrollOffset = () => {
-            const idx = paletteIndex()
-            if (idx < visibleRows) return 0
-            return Math.min(items.length - visibleRows, idx - visibleRows + 1)
-          }
-          const windowed = () => {
-            const start = scrollOffset()
-            return items.slice(start, start + visibleRows).map((label, i) => ({
-              label,
-              index: start + i,
-            }))
-          }
-          return (
-            <box
-              position="absolute"
-              zIndex={3000}
-              left={Math.max(0, Math.floor((dimensions().width - PICKER_WIDTH) / 2))}
-              top={Math.max(0, Math.floor((dimensions().height - PICKER_MAX_HEIGHT) / 2))}
-              width={PICKER_WIDTH}
-              height={PICKER_MAX_HEIGHT}
-              backgroundColor={theme().backgroundElement}
-              border={["top", "right", "bottom", "left"]}
-              borderColor={theme().border}
-              padding={1}
-            >
-              <box flexDirection="row" justifyContent="space-between">
-                <text fg={theme().text} attributes={TextAttributes.BOLD}>
-                  {paletteMode() === "themes" ? "Switch theme" : "Commands"}
-                </text>
-                <text fg={theme().textMuted}>esc</text>
-              </box>
-              <box height={1} />
-              <For each={windowed()}>
-                {(row) => {
-                  const active = () => row.index === paletteIndex()
-                  return (
-                    <box
-                      flexDirection="row"
-                      width="100%"
-                      backgroundColor={active() ? theme().primary : undefined}
-                      paddingLeft={1}
-                      paddingRight={1}
-                    >
-                      <text fg={active() ? theme().background : theme().text} wrapMode="none">
-                        {row.label}
-                      </text>
-                    </box>
-                  )
-                }}
-              </For>
-              <box flexGrow={1} />
-              <text fg={theme().textMuted}>
-                {paletteIndex() + 1}/{items.length} · ↑↓ navigate · enter select
-              </text>
-            </box>
-          )
-        })()}
+      <Show when={paletteMode() === "commands"}>
+        <Picker
+          title="Commands"
+          options={commandList.map((c) => ({ title: c.title, value: c.id }))}
+          onSelect={(opt) => {
+            if (opt.value === "theme.switch") openThemes()
+          }}
+          onClose={() => closePalette(true)}
+        />
+      </Show>
+      <Show when={paletteMode() === "themes"}>
+        <Picker
+          title="Themes"
+          options={listThemeNames().map((n) => ({ title: n, value: n }))}
+          current={themeAtOpen()}
+          onMove={(opt) => setActiveTheme(opt.value)}
+          onSelect={(opt) => {
+            setActiveTheme(opt.value)
+            setPaletteMode(null)
+          }}
+          onClose={() => closePalette(true)}
+        />
       </Show>
 
       <Show when={helpOpen()}>
-        {(() => {
-          const HELP_WIDTH = Math.min(80, Math.max(50, dimensions().width - 8))
-          const rows = HELP_ROWS
-          const HELP_HEIGHT = Math.min(dimensions().height - 4, rows.length + 6)
-          return (
-            <box
-              position="absolute"
-              zIndex={3000}
-              left={Math.max(0, Math.floor((dimensions().width - HELP_WIDTH) / 2))}
-              top={Math.max(0, Math.floor((dimensions().height - HELP_HEIGHT) / 2))}
-              width={HELP_WIDTH}
-              height={HELP_HEIGHT}
-              backgroundColor={theme().backgroundElement}
-              border={["top", "right", "bottom", "left"]}
-              borderColor={theme().border}
-              padding={1}
-              gap={1}
-            >
-              <box flexDirection="row" justifyContent="space-between">
-                <text attributes={TextAttributes.BOLD} fg={theme().text}>
-                  Diff shortcuts
-                </text>
-                <text fg={theme().textMuted}>esc</text>
-              </box>
-              <box flexDirection="row">
-                <text fg={theme().textMuted} width={10} wrapMode="none">
-                  Key
-                </text>
-                <text fg={theme().textMuted} width={22} wrapMode="none">
-                  Action
-                </text>
-                <text fg={theme().textMuted}>Description</text>
-              </box>
-              <For each={rows}>
-                {(row) => (
-                  <box flexDirection="row">
-                    <text fg={theme().text} width={10} wrapMode="none">
-                      {row.shortcut}
-                    </text>
-                    <text fg={theme().text} width={22} wrapMode="none">
-                      {row.action}
-                    </text>
-                    <text fg={theme().textMuted}>{row.description}</text>
-                  </box>
-                )}
-              </For>
+        <box
+          position="absolute"
+          zIndex={3000}
+          left={0}
+          top={0}
+          width={dimensions().width}
+          height={dimensions().height}
+          alignItems="center"
+          paddingTop={Math.floor(dimensions().height / 4)}
+          backgroundColor={RGBA.fromInts(0, 0, 0, 150)}
+          onMouseUp={() => setHelpOpen(false)}
+        >
+          <box
+            width={Math.min(88, Math.max(50, dimensions().width - 4))}
+            backgroundColor={theme().backgroundPanel}
+            paddingTop={1}
+            paddingBottom={1}
+            paddingLeft={4}
+            paddingRight={4}
+            gap={1}
+            onMouseUp={(e: { stopPropagation(): void }) => e.stopPropagation()}
+          >
+            <box flexDirection="row" justifyContent="space-between">
+              <text attributes={TextAttributes.BOLD} fg={theme().text}>
+                Diff shortcuts
+              </text>
+              <text fg={theme().textMuted} onMouseUp={() => setHelpOpen(false)}>
+                esc
+              </text>
             </box>
-          )
-        })()}
+            <box flexDirection="row">
+              <text fg={theme().textMuted} width={10} wrapMode="none">
+                Key
+              </text>
+              <text fg={theme().textMuted} width={22} wrapMode="none">
+                Action
+              </text>
+              <text fg={theme().textMuted}>Description</text>
+            </box>
+            <For each={HELP_ROWS}>
+              {(row) => (
+                <box flexDirection="row">
+                  <text fg={theme().text} width={10} wrapMode="none">
+                    {row.shortcut}
+                  </text>
+                  <text fg={theme().text} width={22} wrapMode="none">
+                    {row.action}
+                  </text>
+                  <text fg={theme().textMuted}>{row.description}</text>
+                </box>
+              )}
+            </For>
+          </box>
+        </box>
       </Show>
     </box>
   )
