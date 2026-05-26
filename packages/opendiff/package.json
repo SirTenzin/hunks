@@ -25,6 +25,11 @@
     "prepack": "bun run build"
   },
   "version": "0.1.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SirTenzin/opendiff.git",
+    "directory": "packages/opendiff"
+  },
   "files": ["bin", "src", "bunfig.toml", "tsconfig.json"],
   "engines": {
     "bun": ">=1.0.0"

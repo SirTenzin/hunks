@@ -7,9 +7,9 @@ Terminal diff viewer extracted from [opencode](https://github.com/anomalyco/open
 Requires [Bun](https://bun.sh) (>= 1.0).
 
 ```sh
-bun i -g opendiff
+bun i -g @sirtenzin/opendiff
 # or
-npm i -g opendiff
+npm i -g @sirtenzin/opendiff
 ```
 
 ## Usage
