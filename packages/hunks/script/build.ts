@@ -4,7 +4,8 @@ const result = await Bun.build({
   entrypoints: ["bin/hunks.ts"],
   outdir: "dist",
   target: "bun",
-  packages: "external",
+  conditions: ["browser"],
+  external: ["@opentui/core"],
   plugins: [createSolidTransformPlugin()],
 })
 

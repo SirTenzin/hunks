@@ -10,7 +10,7 @@
     "typescript": "^5"
   },
   "bin": {
-    "hunks": "bin/hunks.ts"
+    "hunks": "dist/hunks.js"
   },
   "dependencies": {
     "@opentui/core": "0.2.15",
@@ -24,13 +24,13 @@
     "prepublishOnly": "bun run build",
     "prepack": "bun run build"
   },
-  "version": "0.1.2",
+  "version": "0.1.3",
   "repository": {
     "type": "git",
     "url": "https://github.com/SirTenzin/hunks.git",
     "directory": "packages/hunks"
   },
-  "files": ["bin", "src", "bunfig.toml", "tsconfig.json"],
+  "files": ["bin", "src", "dist", "bunfig.toml", "tsconfig.json"],
   "engines": {
     "bun": ">=1.0.0"
   }
