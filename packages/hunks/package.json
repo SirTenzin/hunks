@@ -27,13 +27,21 @@
     "prepublishOnly": "bun run build",
     "prepack": "bun run build"
   },
-  "version": "0.1.7",
+  "version": "0.1.8",
   "repository": {
     "type": "git",
     "url": "https://github.com/SirTenzin/hunks.git",
     "directory": "packages/hunks"
   },
-  "files": ["bin", "src", "dist", "bunfig.toml", "tsconfig.json", "LICENSE", "README.md"],
+  "files": [
+    "bin",
+    "src",
+    "dist",
+    "bunfig.toml",
+    "tsconfig.json",
+    "LICENSE",
+    "README.md"
+  ],
   "engines": {
     "bun": ">=1.0.0"
   }
