@@ -455,7 +455,8 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
       focus() === "files"
         ? fileRows().find((row) => row.path === highlightedPath())?.fileIndex
         : (selectedFileIndex() ?? activePatchFileIndex() ?? currentPatchFileIndex())
-    const file = fileIndex === undefined ? undefined : files()[fileIndex]?.file
+    if (fileIndex === undefined) return
+    const file = files()[fileIndex]?.file
     if (!file) return
     const nextReviewed = !reviewedFileNames().has(file)
     try {
@@ -463,12 +464,31 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
     } catch {
       return
     }
+    let reviewedAfterToggle: ReadonlySet<string> | undefined
     setReviewedFileNames((reviewed) => {
       const next = new Set(reviewed)
       if (nextReviewed) next.add(file)
       else next.delete(file)
+      reviewedAfterToggle = next
       return next
     })
+    if (nextReviewed && reviewedAfterToggle) moveAfterReviewedFile(fileIndex, reviewedAfterToggle)
+  }
+
+  const moveAfterReviewedFile = (fileIndex: number, reviewed: ReadonlySet<string>) => {
+    if (files().every((item) => reviewed.has(item.file))) {
+      props.onExit()
+      return
+    }
+
+    const indexes = patchFileIndexes()
+    const position = indexes.indexOf(fileIndex)
+    const ordered = position === -1 ? indexes : [...indexes.slice(position + 1), ...indexes.slice(0, position)]
+    const next = ordered.find((index) => {
+      const file = files()[index]?.file
+      return file !== undefined && !reviewed.has(file)
+    })
+    if (next !== undefined) jumpToFileIndex(next)
   }
 
   useKeyboard((event) => {
