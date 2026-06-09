@@ -23,7 +23,7 @@ import {
   singlePatchFileIndex,
   toggleFileTreeDirectory,
 } from "./file-tree-utils"
-import type { DiffFile } from "../git"
+import { setGitFileReviewed, type DiffFile } from "../git"
 
 const MIN_SPLIT_WIDTH = 100
 const FILE_TREE_WIDTH = 32
@@ -450,17 +450,23 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
     setCollapsedDirPaths((collapsed) => toggleFileTreeDirectory(collapsed, row.path))
   }
 
-  const toggleSelectedFileReviewed = () => {
+  const toggleSelectedFileReviewed = async () => {
     const fileIndex =
       focus() === "files"
         ? fileRows().find((row) => row.path === highlightedPath())?.fileIndex
         : (selectedFileIndex() ?? activePatchFileIndex() ?? currentPatchFileIndex())
     const file = fileIndex === undefined ? undefined : files()[fileIndex]?.file
     if (!file) return
+    const nextReviewed = !reviewedFileNames().has(file)
+    try {
+      await setGitFileReviewed(process.cwd(), file, nextReviewed)
+    } catch {
+      return
+    }
     setReviewedFileNames((reviewed) => {
       const next = new Set(reviewed)
-      if (next.has(file)) next.delete(file)
-      else next.add(file)
+      if (nextReviewed) next.add(file)
+      else next.delete(file)
       return next
     })
   }
@@ -508,7 +514,7 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
       return
     }
     if (key === "m") {
-      toggleSelectedFileReviewed()
+      void toggleSelectedFileReviewed()
       return
     }
     if (key === "r") {
@@ -764,7 +770,7 @@ export function DiffViewer(props: { diffs: DiffFile[]; onExit: () => void; onRel
             p <span style={{ fg: theme().textMuted }}>previous file</span>
           </text>
           <text fg={theme().text}>
-            m <span style={{ fg: theme().textMuted }}>mark reviewed</span>
+            m <span style={{ fg: theme().textMuted }}>stage reviewed</span>
           </text>
           <text fg={theme().text}>
             ctrl+p <span style={{ fg: theme().textMuted }}>commands</span>
@@ -875,7 +881,7 @@ const HELP_ROWS = [
   { shortcut: "s", action: "Toggle patches", description: "Switch between one selected patch and all patches" },
   { shortcut: "v", action: "Toggle view", description: "Switch between split and unified diff layout" },
   { shortcut: "e", action: "Expand all folders", description: "Open every folder in the file tree" },
-  { shortcut: "m", action: "Mark reviewed", description: "Toggle reviewed state for the selected file" },
+  { shortcut: "m", action: "Stage reviewed", description: "Stage reviewed files; unstage when unreviewed" },
   { shortcut: "r", action: "Reload diff", description: "Re-run git diff to pick up changes" },
   { shortcut: "ctrl+p", action: "Commands", description: "Open the command palette" },
 ] as const
