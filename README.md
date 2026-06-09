@@ -29,7 +29,7 @@ No arguments, no config. It walks up from `cwd` to find `.git`, runs `git diff H
 | `j`/`k` or `↑`/`↓` | Navigate up/down |
 | `n`/`p` | Next/previous changed file |
 | `tab`/`t` | Toggle focus between file tree and diff pane |
-| `m` | Mark file as reviewed |
+| `m` | Mark file as reviewed and stage it; unmark to unstage |
 | `r` | Reload git diff |
 | `v` | Toggle split/unified view |
 | `s` | Toggle single-patch mode |

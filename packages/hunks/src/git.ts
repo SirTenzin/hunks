@@ -124,3 +124,9 @@ export async function getGitDiffs(cwd: string): Promise<DiffFile[]> {
 
   return [...tracked, ...untracked]
 }
+
+export async function setGitFileReviewed(cwd: string, file: string, reviewed: boolean): Promise<void> {
+  const root = await getRepoRoot(cwd)
+  if (root === null) return
+  await git(reviewed ? ["add", "--", file] : ["restore", "--staged", "--", file], root)
+}
